@@ -44,6 +44,9 @@ typedef struct cache_line
     // a tag
     // a method for handling varying levels of associativity
     // a method for selecting which item in the cache is going to be replaced
+    
+    int* valid_bit;
+    int* tag;
 } cache_line_t;
 
 cache_line_t *cache=NULL;
@@ -167,6 +170,9 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     
     // Dynamically create our cache based on the information the user entered
     for (i = 0; i < (1<<index); i++) {
+        //allocate blocks based on associativity
+        //one valid bit & tag per block
+    
     }
     
     // init the pipeline -- set all data to zero and instructions to NOP
