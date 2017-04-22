@@ -389,11 +389,18 @@ void iplc_sim_process_pipeline_jump(char *instruction)
 void iplc_sim_process_pipeline_syscall()
 {
     /* You must implement this function */
+    iplc_sim_push_pipeline_stage();
+
+    pipeline[FETCH].itype = SYSCALL;
+    pipeline[FETCH].instruction_address = instruction_address;
 }
 
 void iplc_sim_process_pipeline_nop()
 {
     /* You must implement this function */
+    iplc_sim_push_pipeline_stage();
+
+    pipeline[FETCH].itype = NOP;
 }
 
 /************************************************************************************************/
