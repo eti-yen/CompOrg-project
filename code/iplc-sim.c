@@ -46,7 +46,8 @@ typedef struct cache_line
     // a method for selecting which item in the cache is going to be replaced
     
     int* valid_bit;
-    int* tag;
+    int* tag_array;
+    int* LRU;
 } cache_line_t;
 
 cache_line_t *cache=NULL;
@@ -172,8 +173,17 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     for (i = 0; i < (1<<index); i++) {
         //allocate blocks based on associativity
         //one valid bit & tag per block
-    
+        cache[i].valid_bit = malloc(sizeof(int)*assoc);
+        cache[i].tag_array = malloc(sizeof(int)*assoc);
+        cache[i].LRU = malloc(sizeof(int)*assoc);
+        
+        //Initialize all valid bits to 0
+        for(j = 0; j < assoc; j++){
+            cache[i].valid_bit[j] = 0;
+        }
     }
+    
+
     
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
@@ -189,6 +199,37 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
     /* You must implement this function */
+    int i;
+    int inserted = 0;
+    //Check to see if any blocks are free
+    //ie valid_bit is 0
+    for(i = 0; i < cache_assoc; i++){
+        //If there is a free block, store here
+        if(cache[index].valid_bit[i] == 0){
+            cache[index].valid_bit[i] = 1;
+            cache[index].tag_array[i] = tag;
+            cache[index].LRU[i] = pipeline_cycles;
+            inserted = 1;
+            break;
+        }
+    }
+    //No free space, must replace using LRU
+    //Iterate through the cache's LRU array to find the LRU entry
+    //aka the one with the smallest number of cycles (oldest)
+    if(inserted == 0){
+        int min = cache[index].LRU[0];
+        int min_element = 0;
+        for(i = 1; i < cache_assoc; i++){
+            if(cache[index].LRU[i] < min){
+                //should i make min the element...
+                min = cache[index].LRU[i];
+                min_element = i;
+            }
+        }
+        //valid bit should still be 1
+        cache[index].tag_array[min_element] = tag;
+        cache[index].LRU[min_element] = pipeline_cycles;
+    }
 }
 
 /*
@@ -198,6 +239,9 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
     /* You must implement this function */
+    
+    //Larger the pipleline_cycles value -> more recent
+    cache[index].LRU[assoc_entry] = pipeline_cycles;
 }
 
 /*
@@ -212,7 +256,34 @@ int iplc_sim_trap_address(unsigned int address)
     int tag=0;
     int hit=0;
     
-    // Call the appropriate function for a miss or hit
+    //MSB: BOB + Index - 1
+    //LSB: BOB
+    index = (address >> (cache_blockoffsetbits)) & ((1 << ((cache_index + cache_blockoffsetbits - 1) - (cache_blockoffsetbits) + 1)) - 1);
+    
+    //MSB: 32 - 1 = 31 (bc 32 bits total)
+    //LSB: BOB + Index
+    tag = (address >> (cache_index + cache_blockoffsetbits)) & ((1 << ((31) - (cache_index + cache_blockoffsetbits) + 1)) - 1);
+    
+    //Index tells us which cache to look into
+    //Number of elements in each array in each cache struct is based on associativity
+    //Look into proper cache to see if tag is stored
+    for(i = 0; i < cache_assoc; i++){
+//        printf("Missing 0\n");
+//        printf("cache index value : %d\n", cache_index);
+//        printf("cache BOB val: %d\n", cache_blockoffsetbits);
+//        printf("index: %d\n", index);
+//        printf("tag: %d\n", tag);
+        if(cache[index].tag_array[i] == tag){
+            //Hit:
+            iplc_sim_LRU_update_on_hit(index, i);
+            hit = 1;
+        }
+    }
+    //Tag was not found inside cache
+    //Miss:
+    if(hit == 0){
+        iplc_sim_LRU_replace_on_miss(index, tag);
+    }
 
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
