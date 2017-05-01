@@ -386,11 +386,11 @@ void iplc_sim_push_pipeline_stage()
     
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
     pipeline_cycles++;
-    /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->ALU */
+    /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
     pipeline[WRITEBACK] = pipeline[MEM];
     pipeline[MEM] = pipeline[ALU];
     pipeline[ALU] = pipeline[DECODE];
-    pipeline[FETCH] = pipeline[ALU];
+    pipeline[DECODE] = pipeline[FETCH];
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
     bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
@@ -466,11 +466,19 @@ void iplc_sim_process_pipeline_jump(char *instruction)
 void iplc_sim_process_pipeline_syscall()
 {
     /* You must implement this function */
+    iplc_sim_push_pipeline_stage();
+
+    pipeline[FETCH].itype = SYSCALL;
+    pipeline[FETCH].instruction_address = instruction_address;
 }
 
 void iplc_sim_process_pipeline_nop()
 {
     /* You must implement this function */
+    iplc_sim_push_pipeline_stage();
+
+    pipeline[FETCH].itype = NOP;
+    pipeline[FETCH].instruction_address = instruction_address;
 }
 
 /************************************************************************************************/
