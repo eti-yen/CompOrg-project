@@ -371,6 +371,17 @@ void iplc_sim_push_pipeline_stage()
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
         int branch_taken = 0;
+	if (pipeline[DECODE].instruction_address + 4 != pipeline[FETCH].instruction_address &&
+	    pipeline[FETCH].instruction_address != 0)
+	    branch_taken = 1;
+	
+	if (branch_taken != branch_predict_taken && pipeline[FETCH].instruction_address != 0) {
+	    //Insert NOP between this instruction and next instruction.
+	    pipeline_t temp = pipeline[FETCH];
+	    bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
+	    iplc_sim_push_pipeline_stage();
+	    pipeline[FETCH] = temp;
+	}
     }
     
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
@@ -378,10 +389,34 @@ void iplc_sim_push_pipeline_stage()
      */
     if (pipeline[MEM].itype == LW) {
         int inserted_nop = 0;
+	data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
+	if (!data_hit) {
+	    printf("DATA MISS:\t Address 0x%x \n", pipeline[MEM].stage.lw.data_address);
+	    pipeline_cycles += CACHE_MISS_DELAY - 1;
+	}
+	else
+	    printf("DATA HIT:\t Address 0x%x \n", pipeline[MEM].stage.lw.data_address);
+	// Only RTYPE instructions actually use the registers in ALU in this simulation.
+	if (pipeline[ALU].itype == RTYPE &&
+	    (pipeline[ALU].stage.rtype.reg1 == pipeline[MEM].stage.lw.dest_reg ||
+	     pipeline[ALU].stage.rtype.reg2_or_constant == pipeline[MEM].stage.lw.dest_reg))
+	    inserted_nop = 1;
+	
+	if (inserted_nop) {
+	    pipeline[WRITEBACK] = pipeline[MEM];
+	    bzero(&(pipeline[MEM]), sizeof(pipeline_t));
+	}
     }
     
     /* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
     if (pipeline[MEM].itype == SW) {
+	data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
+	if (!data_hit) {
+	    printf("DATA MISS:\t Address 0x%x \n", pipeline[MEM].stage.sw.data_address);
+	    pipeline_cycles += CACHE_MISS_DELAY - 1;
+	}
+	else
+	    printf("DATA HIT:\t Address 0x%x \n", pipeline[MEM].stage.sw.data_address);
     }
     
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
