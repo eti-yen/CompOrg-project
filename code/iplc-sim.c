@@ -264,6 +264,8 @@ int iplc_sim_trap_address(unsigned int address)
     //LSB: BOB + Index
     tag = (address >> (cache_index + cache_blockoffsetbits)) & ((1 << ((31) - (cache_index + cache_blockoffsetbits) + 1)) - 1);
     
+    printf("Address %x: Tag= %x, Index= %x \n", address, tag, index);
+    
     //Index tells us which cache to look into
     //Number of elements in each array in each cache struct is based on associativity
     //Look into proper cache to see if tag is stored
@@ -276,6 +278,7 @@ int iplc_sim_trap_address(unsigned int address)
         if(cache[index].tag_array[i] == tag){
             //Hit:
             iplc_sim_LRU_update_on_hit(index, i);
+            cache_hit++;
             hit = 1;
         }
     }
@@ -283,8 +286,10 @@ int iplc_sim_trap_address(unsigned int address)
     //Miss:
     if(hit == 0){
         iplc_sim_LRU_replace_on_miss(index, tag);
+        cache_miss++;
     }
 
+    cache_access++;
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
 }
