@@ -376,8 +376,8 @@ void iplc_sim_push_pipeline_stage()
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
         int branch_taken = 0;
+	branch_count++;
 	if (pipeline[FETCH].instruction_address != 0) {
-	    branch_count++;
 	    if (pipeline[DECODE].instruction_address + 4 != pipeline[FETCH].instruction_address) {
 		branch_taken = 1;
 		printf("DEBUG: Branch Taken: FETCH addr = 0x%x, DECODE instr addr = 0x%x \n",
@@ -390,6 +390,7 @@ void iplc_sim_push_pipeline_stage()
 		bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
 		iplc_sim_push_pipeline_stage();
 		pipeline[FETCH] = temp;
+		branch_count--; //since we'll have double-counted this one.
 	    }
 	    else if (branch_taken == branch_predict_taken)
 		correct_branch_predictions++;
