@@ -72,7 +72,7 @@ unsigned int branch_count=0;
 unsigned int correct_branch_predictions=0;
 
 unsigned int debug=0;
-unsigned int dump_pipeline=1;
+unsigned int dump_pipeline=0;
 
 enum instruction_type {NOP, RTYPE, LW, SW, BRANCH, JUMP, JAL, SYSCALL};
 
@@ -416,6 +416,7 @@ void iplc_sim_push_pipeline_stage()
 	
 	if (inserted_nop) {
 	    pipeline[WRITEBACK] = pipeline[MEM];
+	    instruction_count++;
 	    bzero(&(pipeline[MEM]), sizeof(pipeline_t));
 	}
     }
