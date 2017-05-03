@@ -221,12 +221,14 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
         int min_element = 0;
         for(i = 1; i < cache_assoc; i++){
             if(cache[index].LRU[i] < min){
-                //should i make min the element...
+                //find the block with the least number of cycles
+                //this will be the replaced block
                 min = cache[index].LRU[i];
                 min_element = i;
             }
         }
         //valid bit should still be 1
+        //replace least used block and update LRU
         cache[index].tag_array[min_element] = tag;
         cache[index].LRU[min_element] = pipeline_cycles;
     }
@@ -240,6 +242,7 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
     /* You must implement this function */
     
+    //Update LRU
     //Larger the pipleline_cycles value -> more recent
     cache[index].LRU[assoc_entry] = pipeline_cycles;
 }
@@ -256,8 +259,9 @@ int iplc_sim_trap_address(unsigned int address)
     int tag=0;
     int hit=0;
     
-    //MSB: BOB + Index - 1
-    //LSB: BOB
+    //Most Significant Bit: BOB + Index - 1
+    //Least Significant Bit: BOB
+    //Index is used to find out which cache to look into
     index = (address >> (cache_blockoffsetbits)) & ((1 << ((cache_index + cache_blockoffsetbits - 1) - (cache_blockoffsetbits) + 1)) - 1);
     
     //MSB: 32 - 1 = 31 (bc 32 bits total)
@@ -270,25 +274,21 @@ int iplc_sim_trap_address(unsigned int address)
     //Number of elements in each array in each cache struct is based on associativity
     //Look into proper cache to see if tag is stored
     for(i = 0; i < cache_assoc; i++){
-//        printf("Missing 0\n");
-//        printf("cache index value : %d\n", cache_index);
-//        printf("cache BOB val: %d\n", cache_blockoffsetbits);
-//        printf("index: %d\n", index);
-//        printf("tag: %d\n", tag);
         if(cache[index].tag_array[i] == tag){
-            //Hit:
+            //Hit: call hit function, increment cache_hit, and change hit to 1
             iplc_sim_LRU_update_on_hit(index, i);
             cache_hit++;
             hit = 1;
         }
     }
     //Tag was not found inside cache
-    //Miss:
+    //Miss: call miss function and increment cache_miss
     if(hit == 0){
         iplc_sim_LRU_replace_on_miss(index, tag);
         cache_miss++;
     }
 
+    //increment number of cache_accesses
     cache_access++;
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
